@@ -7,7 +7,10 @@ import { matchLocalFallbackVoice } from './voices.js';
 
 export class LocalSpeechEngine {
   constructor() {
-    this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    this.synth = (typeof window !== 'undefined' && window.speechSynthesis)
+      || (typeof globalThis !== 'undefined' && globalThis.speechSynthesis)
+      || (typeof self !== 'undefined' && self.speechSynthesis)
+      || null;
     this.currentUtterance = null;
     this.availableVoices = [];
     this.currentRate = 1.0;
@@ -23,10 +26,14 @@ export class LocalSpeechEngine {
 
     return new Promise((resolve) => {
       const loadVoices = () => {
-        const voices = this.synth.getVoices();
-        if (voices.length > 0) {
-          this.availableVoices = voices;
-          resolve(voices);
+        try {
+          const voices = this.synth.getVoices();
+          if (voices && voices.length > 0) {
+            this.availableVoices = voices;
+            resolve(voices);
+          }
+        } catch (e) {
+          resolve([]);
         }
       };
 
@@ -34,7 +41,14 @@ export class LocalSpeechEngine {
       if (this.synth.onvoiceschanged !== undefined) {
         this.synth.onvoiceschanged = () => loadVoices();
       }
-      setTimeout(() => resolve(this.synth.getVoices()), 500);
+      setTimeout(() => {
+        try {
+          this.availableVoices = this.synth.getVoices();
+          resolve(this.availableVoices);
+        } catch (e) {
+          resolve([]);
+        }
+      }, 500);
     });
   }
 
@@ -51,37 +65,58 @@ export class LocalSpeechEngine {
       return;
     }
 
+    // Ensure synth is not frozen in paused state
+    try {
+      if (this.synth.paused) {
+        this.synth.resume();
+      }
+    } catch (e) {}
+
     const utterance = new SpeechSynthesisUtterance(text);
     this.currentUtterance = utterance;
-
     utterance.rate = options.rate || this.currentRate;
 
     if (options.profile) {
+      if (!this.availableVoices || this.availableVoices.length === 0) {
+        try {
+          this.availableVoices = this.synth.getVoices();
+        } catch (e) {}
+      }
       const match = matchLocalFallbackVoice(options.profile, this.availableVoices);
       if (match) {
         utterance.voice = match;
         utterance.lang = match.lang;
+      } else if (options.profile.locale) {
+        utterance.lang = options.profile.locale;
       }
     }
 
     return new Promise((resolve, reject) => {
-      utterance.onend = () => {
+      let isDone = false;
+
+      const finish = () => {
+        if (isDone) return;
+        isDone = true;
         this.isPlaying = false;
         this.isPaused = false;
         if (options.onEnd) options.onEnd();
         resolve();
       };
 
+      utterance.onend = finish;
+
       utterance.onerror = (e) => {
-        this.isPlaying = false;
-        this.isPaused = false;
-        if (options.onError) options.onError(e);
-        reject(e);
+        console.warn('[SimpleAloud] SpeechSynthesis error:', e);
+        finish();
       };
 
       this.isPlaying = true;
       this.isPaused = false;
-      this.synth.speak(utterance);
+      try {
+        this.synth.speak(utterance);
+      } catch (e) {
+        finish();
+      }
     });
   }
 

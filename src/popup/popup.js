@@ -107,8 +107,38 @@ btnPlayPause.addEventListener('click', async () => {
     // Start reading on the active tab
     if (activeTabId) {
       statusBadge.textContent = 'Extracting...';
-      await sendMessageToTab(activeTabId, MESSAGE_TYPES.READER_START, { tabId: activeTabId });
-      window.close(); // Close popup so user sees the in-page reader
+      try {
+        await sendMessageToTab(activeTabId, MESSAGE_TYPES.READER_START, { tabId: activeTabId });
+        window.close();
+      } catch (err) {
+        console.warn('[SimpleAloud] Tab messaging failed, attempting dynamic injection:', err);
+        let injected = false;
+        try {
+          if (typeof browser !== 'undefined' && browser.scripting && browser.scripting.executeScript) {
+            await browser.scripting.executeScript({
+              target: { tabId: activeTabId },
+              files: ['dist/content-script.js']
+            });
+            await sendMessageToTab(activeTabId, MESSAGE_TYPES.READER_START, { tabId: activeTabId });
+            injected = true;
+            window.close();
+            return;
+          }
+        } catch (injectErr) {
+          console.warn('[SimpleAloud] Injection failed:', injectErr);
+        }
+
+        if (!injected) {
+          statusBadge.textContent = 'Unavailable';
+          articleTitle.textContent = 'Open an article & refresh the page';
+          setTimeout(() => {
+            if (currentStatus === PLAYBACK_STATUS.IDLE) {
+              statusBadge.textContent = 'Ready';
+              articleTitle.textContent = 'Click Read Aloud to begin';
+            }
+          }, 4000);
+        }
+      }
     }
   }
 });

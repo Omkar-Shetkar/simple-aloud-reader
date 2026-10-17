@@ -8,6 +8,8 @@ console.log('[SimpleAloud] Background coordinator starting...');
 
 const audioManager = new AudioManager();
 
+let latestSessionState = null;
+
 /**
  * Handle incoming runtime messages from content script & popup
  */
@@ -27,31 +29,23 @@ addMessageListener((message, sender, sendResponse) => {
         .catch((error) => sendResponse({ success: false, error: error.message }));
       return true;
 
+    case MESSAGE_TYPES.STATE_CHANGED:
+      if (message.payload) {
+        latestSessionState = message.payload;
+      }
+      break;
+
     case MESSAGE_TYPES.GET_STATE:
       sendResponse({
-        session: audioManager.getState(),
+        session: latestSessionState || audioManager.getState(),
         voices: getCuratedVoices()
       });
       return false;
 
-    case MESSAGE_TYPES.ARTICLE_PARSED:
-      if (message.payload && message.payload.article) {
-        getStoredSettings().then((settings) => {
-          audioManager.loadArticleAndPlay(tabId, message.payload.article, settings);
-          sendResponse({ success: true });
-        });
-        return true;
-      }
-      break;
-
-    case MESSAGE_TYPES.PARAGRAPH_CLICKED:
-      if (message.payload && typeof message.payload.paragraphIndex === 'number') {
-        audioManager.seekToParagraph(message.payload.paragraphIndex);
-        sendResponse({ success: true });
-      }
-      break;
-
     case MESSAGE_TYPES.PLAYER_COMMAND:
+      if (tabId) {
+        sendMessageToTab(tabId, MESSAGE_TYPES.PLAYER_COMMAND, message.payload).catch(() => {});
+      }
       handlePlayerCommand(message.payload);
       sendResponse({ success: true });
       break;

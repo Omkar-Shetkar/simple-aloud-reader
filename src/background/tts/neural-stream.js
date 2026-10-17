@@ -59,6 +59,28 @@ export class NeuralStreamEngine {
   }
 
   /**
+   * Generates Sec-MS-GEC DRM token for Edge TTS handshake.
+   * @returns {Promise<string>}
+   */
+  async getSecMsGecToken() {
+    try {
+      const WIN_EPOCH = 11644473600n;
+      let ticks = BigInt(Math.floor(Date.now() / 1000)) + WIN_EPOCH;
+      ticks = ticks - (ticks % 300n);
+      const ticks100ns = ticks * 10000000n;
+      const strToHash = ticks100ns.toString() + TRUSTED_TOKEN;
+
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const encoder = new TextEncoder();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(strToHash));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  /**
    * Synthesizes text chunk into MP3 audio via WebSocket.
    * @param {string} text
    * @param {string} voiceName
@@ -66,17 +88,28 @@ export class NeuralStreamEngine {
    * @returns {Promise<Blob>}
    */
   async synthesizeToBlob(text, voiceName, rate = 1.0) {
+    const gecToken = await this.getSecMsGecToken();
+    const wsUrl = gecToken
+      ? `${EDGE_WS_URL}&Sec-MS-GEC=${gecToken}&Sec-MS-GEC-Version=1-130.0.2849.68`
+      : EDGE_WS_URL;
+
     return new Promise((resolve, reject) => {
       if (typeof WebSocket === 'undefined') {
         return reject(new Error('WebSocket not available in this environment'));
       }
 
+      let settled = false;
       const connectionTimeout = setTimeout(() => {
-        if (ws) ws.close();
-        reject(new Error('Neural TTS connection timeout'));
-      }, 7000);
+        if (!settled) {
+          settled = true;
+          if (ws) {
+            try { ws.close(); } catch (e) {}
+          }
+          reject(new Error('Neural TTS connection timeout'));
+        }
+      }, 4000);
 
-      const ws = new WebSocket(EDGE_WS_URL);
+      const ws = new WebSocket(wsUrl);
       this.activeWs = ws;
       ws.binaryType = 'arraybuffer';
 
@@ -116,10 +149,13 @@ export class NeuralStreamEngine {
       ws.onmessage = (event) => {
         if (typeof event.data === 'string') {
           if (event.data.includes('Path:turn.end')) {
-            clearTimeout(connectionTimeout);
-            ws.close();
-            const fullBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-            resolve(fullBlob);
+            if (!settled) {
+              settled = true;
+              clearTimeout(connectionTimeout);
+              try { ws.close(); } catch (e) {}
+              const fullBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+              resolve(fullBlob);
+            }
           }
         } else if (event.data instanceof ArrayBuffer) {
           // Binary message: Header length (2 bytes UInt16) followed by header text and binary audio payload
@@ -131,15 +167,23 @@ export class NeuralStreamEngine {
       };
 
       ws.onerror = (err) => {
-        clearTimeout(connectionTimeout);
-        reject(new Error('WebSocket error during neural TTS streaming'));
+        if (!settled) {
+          settled = true;
+          clearTimeout(connectionTimeout);
+          reject(new Error('WebSocket error during neural TTS streaming'));
+        }
       };
 
-      ws.onclose = () => {
-        clearTimeout(connectionTimeout);
-        if (audioChunks.length > 0) {
-          const fullBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-          resolve(fullBlob);
+      ws.onclose = (event) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(connectionTimeout);
+          if (audioChunks.length > 0) {
+            const fullBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            resolve(fullBlob);
+          } else {
+            reject(new Error(`Neural WebSocket closed without audio (code: ${event ? event.code : 'unknown'})`));
+          }
         }
       };
     });

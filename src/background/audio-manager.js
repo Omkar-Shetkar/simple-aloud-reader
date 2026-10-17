@@ -9,7 +9,7 @@ import { TtsFactory } from './tts/tts-factory.js';
 import { sendMessageToTab } from '../common/messages.js';
 
 export class AudioManager {
-  constructor() {
+  constructor(options = {}) {
     this.ttsFactory = new TtsFactory();
     this.activeArticle = null;
     this.targetTabId = null;
@@ -20,6 +20,8 @@ export class AudioManager {
     this.voiceId = 'en-US-female';
     this.isInitialized = false;
     this.playbackToken = 0; // Incremented on stop/seek to invalidate pending async speak callbacks
+    this.onSentenceChange = options.onSentenceChange || null;
+    this.onStateChange = options.onStateChange || null;
   }
 
   async initialize() {
@@ -102,6 +104,10 @@ export class AudioManager {
     this.currentParagraphIndex = currentItem.paragraphIndex;
     this.status = PLAYBACK_STATUS.PLAYING;
     this.broadcastState();
+
+    if (this.onSentenceChange) {
+      this.onSentenceChange(currentItem.paragraphIndex, currentItem.index, currentItem.globalIndex);
+    }
 
     // Broadcast position update to content script for visual highlighting
     if (this.targetTabId) {
@@ -221,8 +227,12 @@ export class AudioManager {
   }
 
   broadcastState() {
+    const state = this.getState();
+    if (this.onStateChange) {
+      this.onStateChange(state);
+    }
     if (this.targetTabId) {
-      sendMessageToTab(this.targetTabId, MESSAGE_TYPES.STATE_CHANGED, this.getState()).catch(() => {});
+      sendMessageToTab(this.targetTabId, MESSAGE_TYPES.STATE_CHANGED, state).catch(() => {});
     }
   }
 }

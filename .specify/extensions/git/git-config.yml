@@ -50,7 +50,7 @@ auto_commit:
     message: "[Spec Kit] Add tasks"
   after_implement:
     enabled: true
-    message: "[Spec Kit] Implement simple aloud reader feature"
+    message: "[Spec Kit] Fix content script module bundling, in-page audio playback, and popup error recovery"
   after_checklist:
     enabled: false
     message: "[Spec Kit] Add checklist"

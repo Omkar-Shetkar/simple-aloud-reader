@@ -4,17 +4,19 @@
   "description": "Simple aloud reader Firefox add-on for online articles with natural English voices for UK, US, and India.",
   "type": "module",
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "build:content": "esbuild src/content/content-script.js --bundle --outfile=dist/content-script.js --format=iife",
+    "build": "npm run build:content && web-ext build --overwrite-dest",
+    "dev": "npm run build:content && web-ext run --target=firefox-desktop",
+    "dev:android": "npm run build:content && web-ext run --target=firefox-android",
     "lint": "web-ext lint",
-    "dev": "web-ext run --target=firefox-desktop",
-    "dev:android": "web-ext run --target=firefox-android",
-    "build": "web-ext build --overwrite-dest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@mozilla/readability": "^0.5.0"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "jsdom": "^24.0.0",
     "vitest": "^1.5.0",
     "web-ext": "^8.0.0"
