@@ -1,0 +1,31 @@
+{
+  "name": "simple-aloud-reader",
+  "version": "1.0.0",
+  "description": "Simple aloud reader Firefox add-on for online articles with natural English voices for UK, US, and India.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "web-ext lint",
+    "dev": "web-ext run --target=firefox-desktop",
+    "dev:android": "web-ext run --target=firefox-android",
+    "build": "web-ext build --overwrite-dest"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "vitest": "^1.5.0",
+    "web-ext": "^8.0.0"
+  },
+  "keywords": [
+    "firefox-addon",
+    "webextension",
+    "text-to-speech",
+    "read-aloud",
+    "accessibility"
+  ],
+  "author": "Omkar Shetkar",
+  "license": "MIT"
+}
