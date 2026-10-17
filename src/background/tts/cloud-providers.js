@@ -129,10 +129,25 @@ export async function synthesizeElevenLabsSpeech(text, settings = {}) {
  * @returns {Promise<Blob>}
  */
 export async function synthesizeCustomSpeech(text, settings = {}) {
-  let baseUrl = (settings.customUrl?.trim() || 'https://api.deepinfra.com/v1/openai').replace(/\/+$/, '');
-  const endpoint = baseUrl.endsWith('/audio/speech') ? baseUrl : `${baseUrl}/audio/speech`;
+  let url = (settings.customUrl?.trim() || 'https://api.deepinfra.com/v1/openai').replace(/\/+$/, '');
   const apiKey = settings.customKey?.trim();
   const model = settings.customModel?.trim() || 'hexgrad/Kokoro-82M';
+
+  let endpoint = url;
+  let bodyPayload;
+
+  // Detect Hugging Face Inference API / Dedicated Endpoint vs OpenAI-compatible audio endpoint
+  if (url.includes('api-inference.huggingface.co') || url.includes('endpoints.huggingface.cloud')) {
+    endpoint = url;
+    bodyPayload = { inputs: text };
+  } else {
+    endpoint = url.endsWith('/audio/speech') ? url : `${url}/audio/speech`;
+    bodyPayload = {
+      model: model,
+      input: text,
+      voice: 'af_heart'
+    };
+  }
 
   const headers = { 'Content-Type': 'application/json' };
   if (apiKey) {
@@ -142,11 +157,7 @@ export async function synthesizeCustomSpeech(text, settings = {}) {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      model: model,
-      input: text,
-      voice: 'af_heart'
-    })
+    body: JSON.stringify(bodyPayload)
   });
 
   if (!res.ok) {

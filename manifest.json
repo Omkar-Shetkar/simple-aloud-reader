@@ -42,7 +42,12 @@
     "https://*.tts.speech.microsoft.com/*",
     "https://api.openai.com/*",
     "https://api.elevenlabs.io/*",
-    "https://api.deepinfra.com/*"
+    "https://api.deepinfra.com/*",
+    "https://*.huggingface.co/*",
+    "https://*.hf.space/*",
+    "https://*.endpoints.huggingface.cloud/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "commands": {
     "_execute_action": {

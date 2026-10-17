@@ -3241,10 +3241,22 @@ Path:ssml\r
     return blob;
   }
   async function synthesizeCustomSpeech(text, settings = {}) {
-    let baseUrl = (settings.customUrl?.trim() || "https://api.deepinfra.com/v1/openai").replace(/\/+$/, "");
-    const endpoint = baseUrl.endsWith("/audio/speech") ? baseUrl : `${baseUrl}/audio/speech`;
+    let url = (settings.customUrl?.trim() || "https://api.deepinfra.com/v1/openai").replace(/\/+$/, "");
     const apiKey = settings.customKey?.trim();
     const model = settings.customModel?.trim() || "hexgrad/Kokoro-82M";
+    let endpoint = url;
+    let bodyPayload;
+    if (url.includes("api-inference.huggingface.co") || url.includes("endpoints.huggingface.cloud")) {
+      endpoint = url;
+      bodyPayload = { inputs: text };
+    } else {
+      endpoint = url.endsWith("/audio/speech") ? url : `${url}/audio/speech`;
+      bodyPayload = {
+        model,
+        input: text,
+        voice: "af_heart"
+      };
+    }
     const headers = { "Content-Type": "application/json" };
     if (apiKey) {
       headers["Authorization"] = `Bearer ${apiKey}`;
@@ -3252,11 +3264,7 @@ Path:ssml\r
     const res = await fetch(endpoint, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        model,
-        input: text,
-        voice: "af_heart"
-      })
+      body: JSON.stringify(bodyPayload)
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
