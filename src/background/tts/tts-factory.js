@@ -55,6 +55,8 @@ export class TtsFactory {
         this.activeEngine = this.neuralEngine;
         await this.neuralEngine.speak(text, {
           serviceVoiceName: profile.serviceVoiceName,
+          dialect: profile.dialect,
+          profile,
           rate,
           onEnd: options.onEnd,
           onError: options.onError

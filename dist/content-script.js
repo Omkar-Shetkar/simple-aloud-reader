@@ -2415,27 +2415,79 @@
     const found = CURATED_VOICES.find((v) => v.id === voiceId);
     return found ? { ...found } : { ...CURATED_VOICES[0] };
   }
+  var ROBOTIC_VOICE_NAMES = [
+    "albert",
+    "bad news",
+    "bahh",
+    "bells",
+    "boing",
+    "bubbles",
+    "cellos",
+    "deranged",
+    "good news",
+    "hysterical",
+    "jester",
+    "junior",
+    "kathy",
+    "organ",
+    "superstar",
+    "trinoids",
+    "whisper",
+    "wobble",
+    "zarvox",
+    "fred",
+    "ralph",
+    "grandma",
+    "grandpa"
+  ];
+  var PREFERRED_VOICE_NAMES = {
+    "en-US-female": ["samantha", "ava", "allison", "susan", "zoe", "victoria", "flo", "shelley", "sandy", "jenny", "zira", "female"],
+    "en-US-male": ["alex", "tom", "evan", "nathan", "reed", "eddy", "rocko", "guy", "david", "mark", "male"],
+    "en-GB-female": ["serena", "kate", "stephanie", "fiona", "sonia", "hazel", "libby", "flo", "shelley", "female"],
+    "en-GB-male": ["daniel", "oliver", "george", "ryan", "eddy", "reed", "rocko", "male"],
+    "en-IN-female": ["veena", "neerja", "tara", "kavya", "ananya", "heera", "female"],
+    "en-IN-male": ["rishi", "aman", "prabhat", "ravi", "kunal", "male"]
+  };
   function matchLocalFallbackVoice(profile, localVoices = []) {
     if (!localVoices || localVoices.length === 0) return null;
-    const targetLang = profile.dialect.toLowerCase().replace("_", "-");
-    const targetGender = profile.gender.toLowerCase();
-    const exactLangAndGender = localVoices.find((v) => {
-      const lang = (v.lang || "").toLowerCase().replace("_", "-");
+    const targetLang = (profile.dialect || "en-US").toLowerCase().replace("_", "-");
+    const targetBaseLang = targetLang.split("-")[0];
+    const preferredList = PREFERRED_VOICE_NAMES[profile.id] || [];
+    const naturalPool = localVoices.filter((v) => {
       const name = (v.name || "").toLowerCase();
-      return lang === targetLang && name.includes(targetGender);
+      return !ROBOTIC_VOICE_NAMES.some((bad) => name.includes(bad));
     });
-    if (exactLangAndGender) return exactLangAndGender;
-    const exactLang = localVoices.find((v) => {
-      const lang = (v.lang || "").toLowerCase().replace("_", "-");
-      return lang === targetLang;
-    });
-    if (exactLang) return exactLang;
-    const prefixLang = localVoices.find((v) => {
-      const lang = (v.lang || "").toLowerCase();
-      return lang.startsWith("en");
-    });
-    if (prefixLang) return prefixLang;
-    return localVoices[0];
+    const pool = naturalPool.length > 0 ? naturalPool : localVoices;
+    let bestVoice = null;
+    let bestScore = -Infinity;
+    for (const voice of pool) {
+      const vLang = (voice.lang || "").toLowerCase().replace("_", "-");
+      const vName = (voice.name || "").toLowerCase();
+      let score = 0;
+      if (vLang === targetLang) {
+        score += 50;
+      } else if (vLang.startsWith(targetBaseLang)) {
+        score += 20;
+      } else {
+        score -= 50;
+      }
+      if (vName.includes("enhanced")) score += 40;
+      if (vName.includes("natural")) score += 30;
+      if (vName.includes("premium")) score += 30;
+      if (vName.includes("neural")) score += 30;
+      for (let i = 0; i < preferredList.length; i++) {
+        if (vName.includes(preferredList[i])) {
+          score += 50 - i * 3;
+          break;
+        }
+      }
+      if (voice.localService) score += 5;
+      if (score > bestScore) {
+        bestScore = score;
+        bestVoice = voice;
+      }
+    }
+    return bestVoice || pool[0] || localVoices[0];
   }
 
   // src/content/ui/voice-selector.js
@@ -2743,13 +2795,48 @@
       return "";
     }
     /**
-     * Synthesizes text chunk into MP3 audio via WebSocket.
+     * Fetches high-definition neural speech stream from Google Neural TTS.
+     * @param {string} text
+     * @param {string} dialect
+     * @returns {Promise<Blob>}
+     */
+    async fetchGoogleTtsBlob(text, dialect = "en-US") {
+      const tl = dialect.startsWith("en-IN") ? "en-IN" : dialect.startsWith("en-GB") ? "en-GB" : "en-US";
+      const cleanText = text.slice(0, 200).trim();
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${tl}&q=${encodeURIComponent(cleanText)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Google TTS response status: ${res.status}`);
+      const blob = await res.blob();
+      if (!blob || blob.size === 0) throw new Error("Empty audio stream from Google TTS");
+      return blob;
+    }
+    /**
+     * Synthesizes text chunk into MP3 audio via Neural Stream or Edge WebSocket.
+     * @param {string} text
+     * @param {string} voiceName
+     * @param {number} rate
+     * @param {string} dialect
+     * @returns {Promise<Blob>}
+     */
+    async synthesizeToBlob(text, voiceName, rate = 1, dialect = "en-US") {
+      try {
+        const blob = await this.fetchGoogleTtsBlob(text, dialect);
+        if (blob && blob.size > 0) {
+          return blob;
+        }
+      } catch (e) {
+        console.warn("[SimpleAloud] Primary neural stream unavailable, attempting Edge WebSocket...", e);
+      }
+      return this.synthesizeEdgeWebSocket(text, voiceName, rate);
+    }
+    /**
+     * Synthesizes text chunk into MP3 audio via Edge WebSocket.
      * @param {string} text
      * @param {string} voiceName
      * @param {number} rate
      * @returns {Promise<Blob>}
      */
-    async synthesizeToBlob(text, voiceName, rate = 1) {
+    async synthesizeEdgeWebSocket(text, voiceName, rate = 1) {
       const gecToken = await this.getSecMsGecToken();
       const wsUrl = gecToken ? `${EDGE_WS_URL}&Sec-MS-GEC=${gecToken}&Sec-MS-GEC-Version=1-130.0.2849.68` : EDGE_WS_URL;
       return new Promise((resolve, reject) => {
@@ -2848,7 +2935,8 @@ Path:ssml\r
       this.stop();
       const voiceName = options.serviceVoiceName || this.currentVoiceName;
       const rate = options.rate || this.currentRate;
-      const blob = await this.synthesizeToBlob(text, voiceName, rate);
+      const dialect = options.dialect || options.profile?.dialect || "en-US";
+      const blob = await this.synthesizeToBlob(text, voiceName, rate, dialect);
       if (!blob || blob.size === 0) {
         throw new Error("Empty audio stream received");
       }
@@ -3098,6 +3186,8 @@ Path:ssml\r
           this.activeEngine = this.neuralEngine;
           await this.neuralEngine.speak(text, {
             serviceVoiceName: profile.serviceVoiceName,
+            dialect: profile.dialect,
+            profile,
             rate,
             onEnd: options.onEnd,
             onError: options.onError

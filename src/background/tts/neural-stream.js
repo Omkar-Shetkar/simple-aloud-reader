@@ -81,13 +81,51 @@ export class NeuralStreamEngine {
   }
 
   /**
-   * Synthesizes text chunk into MP3 audio via WebSocket.
+   * Fetches high-definition neural speech stream from Google Neural TTS.
+   * @param {string} text
+   * @param {string} dialect
+   * @returns {Promise<Blob>}
+   */
+  async fetchGoogleTtsBlob(text, dialect = 'en-US') {
+    const tl = dialect.startsWith('en-IN') ? 'en-IN' : (dialect.startsWith('en-GB') ? 'en-GB' : 'en-US');
+    const cleanText = text.slice(0, 200).trim();
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${tl}&q=${encodeURIComponent(cleanText)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Google TTS response status: ${res.status}`);
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error('Empty audio stream from Google TTS');
+    return blob;
+  }
+
+  /**
+   * Synthesizes text chunk into MP3 audio via Neural Stream or Edge WebSocket.
+   * @param {string} text
+   * @param {string} voiceName
+   * @param {number} rate
+   * @param {string} dialect
+   * @returns {Promise<Blob>}
+   */
+  async synthesizeToBlob(text, voiceName, rate = 1.0, dialect = 'en-US') {
+    try {
+      const blob = await this.fetchGoogleTtsBlob(text, dialect);
+      if (blob && blob.size > 0) {
+        return blob;
+      }
+    } catch (e) {
+      console.warn('[SimpleAloud] Primary neural stream unavailable, attempting Edge WebSocket...', e);
+    }
+
+    return this.synthesizeEdgeWebSocket(text, voiceName, rate);
+  }
+
+  /**
+   * Synthesizes text chunk into MP3 audio via Edge WebSocket.
    * @param {string} text
    * @param {string} voiceName
    * @param {number} rate
    * @returns {Promise<Blob>}
    */
-  async synthesizeToBlob(text, voiceName, rate = 1.0) {
+  async synthesizeEdgeWebSocket(text, voiceName, rate = 1.0) {
     const gecToken = await this.getSecMsGecToken();
     const wsUrl = gecToken
       ? `${EDGE_WS_URL}&Sec-MS-GEC=${gecToken}&Sec-MS-GEC-Version=1-130.0.2849.68`
@@ -199,8 +237,9 @@ export class NeuralStreamEngine {
 
     const voiceName = options.serviceVoiceName || this.currentVoiceName;
     const rate = options.rate || this.currentRate;
+    const dialect = options.dialect || options.profile?.dialect || 'en-US';
 
-    const blob = await this.synthesizeToBlob(text, voiceName, rate);
+    const blob = await this.synthesizeToBlob(text, voiceName, rate, dialect);
     if (!blob || blob.size === 0) {
       throw new Error('Empty audio stream received');
     }

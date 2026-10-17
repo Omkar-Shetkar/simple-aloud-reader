@@ -50,7 +50,7 @@ auto_commit:
     message: "[Spec Kit] Add tasks"
   after_implement:
     enabled: true
-    message: "[Spec Kit] Fix content script module bundling, in-page audio playback, and popup error recovery"
+    message: "[Spec Kit] Add neural speech streaming and natural voice ranking"
   after_checklist:
     enabled: false
     message: "[Spec Kit] Add checklist"
