@@ -1,0 +1,151 @@
+:host {
+  all: initial;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+}
+
+.aloud-player-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 8px 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(99, 102, 241, 0.2);
+  color: #f8fafc;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.aloud-btn {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.aloud-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+}
+
+.aloud-btn:active {
+  transform: scale(0.95);
+}
+
+.aloud-btn-play {
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  width: 42px;
+  height: 42px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.aloud-btn-play:hover {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+}
+
+.aloud-voice-select {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  max-width: 160px;
+}
+
+.aloud-voice-select:hover, .aloud-voice-select:focus {
+  border-color: #6366f1;
+}
+
+.aloud-speed-btn {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #6366f1;
+  border-radius: 20px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.aloud-speed-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+}
+
+.aloud-btn-close {
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.aloud-btn-close:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* Mobile responsive & touch-friendly ergonomics */
+@media (max-width: 640px) {
+  :host {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: min(94%, 480px);
+  }
+
+  .aloud-player-container {
+    width: 100%;
+    justify-content: space-between;
+    padding: 8px 12px;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .aloud-btn {
+    min-width: 38px;
+    min-height: 38px;
+    touch-action: manipulation;
+  }
+
+  .aloud-btn-play {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .aloud-voice-select {
+    max-width: 115px;
+    font-size: 12px;
+    padding: 6px 8px;
+    touch-action: manipulation;
+  }
+
+  .aloud-speed-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 12px;
+    touch-action: manipulation;
+  }
+}
+

@@ -1,0 +1,20 @@
+# Node.js
+node_modules/
+dist/*
+!dist/content-script.js
+build/
+coverage/
+*.log
+.env*
+
+# WebExtensions & Browser Artifacts
+web-ext-artifacts/
+.firefox-profile/
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
