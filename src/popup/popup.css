@@ -32,6 +32,14 @@
   padding: 0;
 }
 
+/* Enforce strict hidden attribute handling */
+[hidden],
+.provider-fields[hidden],
+.settings-view[hidden],
+.main-content[hidden] {
+  display: none !important;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-color);
@@ -45,7 +53,7 @@ body {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 /* Header */
@@ -182,7 +190,7 @@ body {
 .main-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .primary-controls {
@@ -236,6 +244,44 @@ body {
 .btn-secondary:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Engine status banner in player view */
+.active-engine-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 7px 10px;
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+.engine-indicator-label {
+  color: var(--text-muted);
+}
+
+.engine-indicator-name {
+  color: var(--accent);
+  font-weight: 600;
+  flex: 1;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s ease;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+  opacity: 0.85;
 }
 
 /* Settings Controls */
@@ -312,10 +358,21 @@ body {
   border-bottom: 1px solid var(--card-border);
 }
 
+.settings-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .settings-title {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-main);
+}
+
+.settings-subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .btn-text {
@@ -341,10 +398,20 @@ body {
   gap: 10px;
 }
 
+.config-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .text-input {
   width: 100%;
   height: 36px;
-  background-color: var(--card-bg);
+  background-color: var(--bg-color);
   border: 1px solid var(--card-border);
   border-radius: 8px;
   color: var(--text-main);
@@ -359,15 +426,42 @@ body {
   border-color: var(--primary);
 }
 
+.toggle-password-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.toggle-password-btn:hover {
+  text-decoration: underline;
+}
+
 .info-card {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-left: 3px solid var(--primary);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: var(--radius);
+  padding: 12px;
   font-size: 11px;
   line-height: 1.45;
   color: var(--text-muted);
+}
+
+.success-card {
+  border-left: 3px solid #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.card-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #10b981;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
 
 .info-card strong {
@@ -391,7 +485,7 @@ body {
 }
 
 .provider-help code {
-  background-color: var(--card-bg);
+  background-color: var(--bg-color);
   border: 1px solid var(--card-border);
   padding: 1px 4px;
   border-radius: 4px;

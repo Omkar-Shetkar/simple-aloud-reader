@@ -50,7 +50,7 @@ auto_commit:
     message: "[Spec Kit] Add tasks"
   after_implement:
     enabled: true
-    message: "[Spec Kit] Add AI Voice Settings panel with multi-provider support"
+    message: "[Spec Kit] Simplify settings panel with conditional provider card visibility and password toggles"
   after_checklist:
     enabled: false
     message: "[Spec Kit] Add checklist"

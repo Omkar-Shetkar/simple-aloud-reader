@@ -15,6 +15,8 @@ const voiceSelect = document.getElementById('voice-select');
 const speedSlider = document.getElementById('speed-slider');
 const speedDisplay = document.getElementById('speed-display');
 const logoIcon = document.querySelector('.logo-icon');
+const engineIndicatorName = document.getElementById('engine-indicator-name');
+const btnEngineChange = document.getElementById('btn-engine-change');
 
 // Settings View Elements
 const settingsView = document.getElementById('settings-view');
@@ -24,7 +26,7 @@ const providerSelect = document.getElementById('provider-select');
 const btnSaveSettings = document.getElementById('btn-save-settings');
 const settingsStatus = document.getElementById('settings-status');
 
-// Provider Fields
+// Provider Fields Containers
 const providerFieldGroups = {
   system: document.getElementById('provider-fields-system'),
   azure: document.getElementById('provider-fields-azure'),
@@ -33,6 +35,7 @@ const providerFieldGroups = {
   custom: document.getElementById('provider-fields-custom')
 };
 
+// Provider Specific Input Elements
 const azureKeyInput = document.getElementById('azure-key');
 const azureRegionInput = document.getElementById('azure-region');
 const openaiKeyInput = document.getElementById('openai-key');
@@ -95,23 +98,56 @@ function updateUIState(state) {
   }
 }
 
-function switchProviderFields(provider) {
+function updateEngineIndicator(provider) {
+  if (!engineIndicatorName) return;
+  switch (provider) {
+    case 'azure':
+      engineIndicatorName.textContent = 'Azure Speech';
+      break;
+    case 'openai':
+      engineIndicatorName.textContent = `OpenAI (${openaiVoiceSelect.value || 'Nova'})`;
+      break;
+    case 'elevenlabs':
+      engineIndicatorName.textContent = 'ElevenLabs';
+      break;
+    case 'custom':
+      engineIndicatorName.textContent = 'Custom / Kokoro';
+      break;
+    case 'system':
+    default:
+      engineIndicatorName.textContent = 'Free Neural';
+      break;
+  }
+}
+
+/**
+ * Ensures ONLY the selected provider configuration card is displayed.
+ */
+function switchProviderFields(selectedProvider) {
+  const current = selectedProvider || 'system';
   for (const [key, element] of Object.entries(providerFieldGroups)) {
     if (element) {
-      element.hidden = key !== provider;
+      const isActive = key === current;
+      element.hidden = !isActive;
+      element.style.display = isActive ? 'flex' : 'none';
     }
   }
+  updateEngineIndicator(current);
 }
 
 function toggleSettingsView(show) {
   const isSettingsActive = show !== undefined ? show : settingsView.hidden;
   if (isSettingsActive) {
     playerView.hidden = true;
+    playerView.style.display = 'none';
     settingsView.hidden = false;
+    settingsView.style.display = 'flex';
     btnToggleSettings.classList.add('active');
   } else {
     settingsView.hidden = true;
+    settingsView.style.display = 'none';
     playerView.hidden = false;
+    playerView.style.display = 'flex';
     btnToggleSettings.classList.remove('active');
   }
 }
@@ -156,7 +192,7 @@ async function init() {
   }
 }
 
-// Navigation Events
+// Navigation & Provider Switch Events
 btnToggleSettings.addEventListener('click', () => {
   toggleSettingsView();
 });
@@ -165,12 +201,34 @@ btnBackPlayer.addEventListener('click', () => {
   toggleSettingsView(false);
 });
 
+if (btnEngineChange) {
+  btnEngineChange.addEventListener('click', () => {
+    toggleSettingsView(true);
+  });
+}
+
 providerSelect.addEventListener('change', (e) => {
   switchProviderFields(e.target.value);
 });
 
-// Save Settings Event
-btnSaveSettings.addEventListener('click', async () => {
+// Show/Hide Password Toggle Buttons
+document.querySelectorAll('.toggle-password-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const targetId = btn.getAttribute('data-target');
+    const input = document.getElementById(targetId);
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = 'Hide';
+    } else {
+      input.type = 'password';
+      btn.textContent = 'Show';
+    }
+  });
+});
+
+// Save Settings Action
+async function saveCurrentSettings() {
   const payload = {
     provider: providerSelect.value,
     azureKey: azureKeyInput.value.trim(),
@@ -193,6 +251,7 @@ btnSaveSettings.addEventListener('click', async () => {
     if (activeTabId) {
       sendMessageToTab(activeTabId, MESSAGE_TYPES.UPDATE_SETTINGS, payload).catch(() => {});
     }
+    updateEngineIndicator(payload.provider);
     settingsStatus.textContent = 'Saved ✓';
     settingsStatus.style.color = '#10b981';
   } catch (err) {
@@ -206,6 +265,29 @@ btnSaveSettings.addEventListener('click', async () => {
         settingsStatus.textContent = '';
       }
     }, 2500);
+  }
+}
+
+btnSaveSettings.addEventListener('click', saveCurrentSettings);
+
+// Allow pressing Enter in text inputs to save
+[
+  azureKeyInput,
+  azureRegionInput,
+  openaiKeyInput,
+  elevenlabsKeyInput,
+  elevenlabsVoiceIdInput,
+  customUrlInput,
+  customModelInput,
+  customKeyInput
+].forEach((input) => {
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveCurrentSettings();
+      }
+    });
   }
 });
 

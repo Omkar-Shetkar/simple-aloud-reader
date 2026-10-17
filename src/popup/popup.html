@@ -52,6 +52,12 @@
         </button>
       </div>
 
+      <div class="active-engine-bar" id="active-engine-bar">
+        <span class="engine-indicator-label">Speech Engine:</span>
+        <span class="engine-indicator-name" id="engine-indicator-name">Free Neural</span>
+        <button type="button" id="btn-engine-change" class="link-btn">Configure</button>
+      </div>
+
       <div class="setting-group" id="system-voice-group">
         <label for="voice-select" class="setting-label">Voice &amp; Accent</label>
         <select id="voice-select" class="select-dropdown">
@@ -92,12 +98,15 @@
     <!-- SETTINGS VIEW -->
     <section id="settings-view" class="settings-view" hidden>
       <div class="settings-header-row">
-        <span class="settings-title">AI Voice &amp; Engines</span>
-        <button id="btn-back-player" class="btn-text">← Back to Player</button>
+        <div class="settings-title-group">
+          <span class="settings-title">Voice Settings</span>
+          <span class="settings-subtitle">Select and configure your speech engine</span>
+        </div>
+        <button id="btn-back-player" class="btn-text">✕ Close</button>
       </div>
 
       <div class="setting-group">
-        <label for="provider-select" class="setting-label">Voice Engine</label>
+        <label for="provider-select" class="setting-label">Speech Engine</label>
         <select id="provider-select" class="select-dropdown">
           <option value="system">✨ Free Neural (Default - Zero Setup)</option>
           <option value="azure">⚡ Microsoft Azure Speech (Free 500k/mo)</option>
@@ -107,74 +116,95 @@
         </select>
       </div>
 
-      <!-- Free System Neural Info -->
-      <div id="provider-fields-system" class="provider-fields">
-        <div class="info-card">
-          <p><strong>100% Free &amp; Zero Setup:</strong> Uses High-Definition Neural audio streaming (via Google) and your OS's natural voices (Apple Siri/Samantha/Alex, Windows Natural). No API keys or accounts required.</p>
+      <!-- Free System Neural Info (Visible ONLY when Free Neural is selected) -->
+      <div id="provider-fields-system" class="provider-fields" hidden>
+        <div class="info-card success-card">
+          <div class="card-status-badge">✓ Active &amp; Ready</div>
+          <p><strong>100% Free &amp; Zero Config:</strong> Streams high-definition neural audio and uses your device's natural voices (Apple Siri/Samantha/Alex, Windows Natural). No API keys or accounts required.</p>
         </div>
       </div>
 
-      <!-- Azure Fields -->
+      <!-- Azure Fields (Visible ONLY when Azure is selected) -->
       <div id="provider-fields-azure" class="provider-fields" hidden>
-        <div class="setting-group">
-          <label for="azure-key" class="setting-label">Azure Speech Key</label>
-          <input type="password" id="azure-key" class="text-input" placeholder="Enter Azure 32-character key" autocomplete="off" />
+        <div class="config-card">
+          <div class="setting-group">
+            <div class="setting-header">
+              <label for="azure-key" class="setting-label">Azure Speech Key</label>
+              <button type="button" class="toggle-password-btn" data-target="azure-key">Show</button>
+            </div>
+            <input type="password" id="azure-key" class="text-input" placeholder="Paste 32-character Azure Key" autocomplete="off" />
+          </div>
+          <div class="setting-group">
+            <label for="azure-region" class="setting-label">Azure Region</label>
+            <input type="text" id="azure-region" class="text-input" placeholder="e.g. eastus, centralus, westus" value="eastus" />
+          </div>
+          <p class="provider-help">Free tier provides 500,000 characters every month. <a href="https://azure.microsoft.com/free/cognitive-services/" target="_blank" rel="noopener noreferrer" class="link">Get Free Azure Key ↗</a></p>
         </div>
-        <div class="setting-group">
-          <label for="azure-region" class="setting-label">Azure Region</label>
-          <input type="text" id="azure-region" class="text-input" placeholder="e.g. eastus, centralus, westus" value="eastus" />
-        </div>
-        <p class="provider-help">Free tier provides 500,000 characters every month. <a href="https://azure.microsoft.com/free/cognitive-services/" target="_blank" rel="noopener noreferrer" class="link">Get Free Azure Key ↗</a></p>
       </div>
 
-      <!-- OpenAI Fields -->
+      <!-- OpenAI Fields (Visible ONLY when OpenAI is selected) -->
       <div id="provider-fields-openai" class="provider-fields" hidden>
-        <div class="setting-group">
-          <label for="openai-key" class="setting-label">OpenAI API Key</label>
-          <input type="password" id="openai-key" class="text-input" placeholder="sk-..." autocomplete="off" />
+        <div class="config-card">
+          <div class="setting-group">
+            <div class="setting-header">
+              <label for="openai-key" class="setting-label">OpenAI API Key</label>
+              <button type="button" class="toggle-password-btn" data-target="openai-key">Show</button>
+            </div>
+            <input type="password" id="openai-key" class="text-input" placeholder="sk-..." autocomplete="off" />
+          </div>
+          <div class="setting-group">
+            <label for="openai-voice" class="setting-label">Voice Model</label>
+            <select id="openai-voice" class="select-dropdown">
+              <option value="nova">Nova (Expressive &amp; Energetic - Female)</option>
+              <option value="alloy">Alloy (Balanced &amp; Natural)</option>
+              <option value="echo">Echo (Warm &amp; Narrative - Male)</option>
+              <option value="shimmer">Shimmer (Clear &amp; Expressive - Female)</option>
+              <option value="onyx">Onyx (Deep &amp; Authoritative - Male)</option>
+              <option value="fable">Fable (Warm &amp; British Accent)</option>
+            </select>
+          </div>
+          <p class="provider-help">Hyper-natural speech realism. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="link">Get OpenAI API Key ↗</a></p>
         </div>
-        <div class="setting-group">
-          <label for="openai-voice" class="setting-label">Voice Model</label>
-          <select id="openai-voice" class="select-dropdown">
-            <option value="nova">Nova (Expressive &amp; Energetic - Female)</option>
-            <option value="alloy">Alloy (Balanced &amp; Natural)</option>
-            <option value="echo">Echo (Warm &amp; Narrative - Male)</option>
-            <option value="shimmer">Shimmer (Clear &amp; Expressive - Female)</option>
-            <option value="onyx">Onyx (Deep &amp; Authoritative - Male)</option>
-            <option value="fable">Fable (Warm &amp; British Accent)</option>
-          </select>
-        </div>
-        <p class="provider-help">Ultra-expressive neural speech. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="link">Get OpenAI API Key ↗</a></p>
       </div>
 
-      <!-- ElevenLabs Fields -->
+      <!-- ElevenLabs Fields (Visible ONLY when ElevenLabs is selected) -->
       <div id="provider-fields-elevenlabs" class="provider-fields" hidden>
-        <div class="setting-group">
-          <label for="elevenlabs-key" class="setting-label">ElevenLabs API Key</label>
-          <input type="password" id="elevenlabs-key" class="text-input" placeholder="Enter ElevenLabs API Key" autocomplete="off" />
+        <div class="config-card">
+          <div class="setting-group">
+            <div class="setting-header">
+              <label for="elevenlabs-key" class="setting-label">ElevenLabs API Key</label>
+              <button type="button" class="toggle-password-btn" data-target="elevenlabs-key">Show</button>
+            </div>
+            <input type="password" id="elevenlabs-key" class="text-input" placeholder="Paste ElevenLabs API Key" autocomplete="off" />
+          </div>
+          <div class="setting-group">
+            <label for="elevenlabs-voice-id" class="setting-label">Voice ID</label>
+            <input type="text" id="elevenlabs-voice-id" class="text-input" placeholder="e.g. 21m00Tcm4TlvDq8ikWAM" value="21m00Tcm4TlvDq8ikWAM" />
+          </div>
+          <p class="provider-help">Human-like emotion &amp; breathing cadence. <a href="https://elevenlabs.io" target="_blank" rel="noopener noreferrer" class="link">Get ElevenLabs Key ↗</a></p>
         </div>
-        <div class="setting-group">
-          <label for="elevenlabs-voice-id" class="setting-label">Voice ID</label>
-          <input type="text" id="elevenlabs-voice-id" class="text-input" placeholder="e.g. 21m00Tcm4TlvDq8ikWAM" value="21m00Tcm4TlvDq8ikWAM" />
-        </div>
-        <p class="provider-help">State-of-the-art realism and breathing cadence. <a href="https://elevenlabs.io" target="_blank" rel="noopener noreferrer" class="link">Get ElevenLabs Key ↗</a></p>
       </div>
 
-      <!-- Custom / Kokoro-82M Fields -->
+      <!-- Custom / Kokoro-82M Fields (Visible ONLY when Custom is selected) -->
       <div id="provider-fields-custom" class="provider-fields" hidden>
-        <div class="setting-group">
-          <label for="custom-url" class="setting-label">Speech Endpoint URL</label>
-          <input type="url" id="custom-url" class="text-input" placeholder="https://api.deepinfra.com/v1/openai/audio/speech" />
+        <div class="config-card">
+          <div class="setting-group">
+            <label for="custom-url" class="setting-label">Speech Endpoint URL</label>
+            <input type="url" id="custom-url" class="text-input" placeholder="https://api.deepinfra.com/v1/openai/audio/speech" />
+          </div>
+          <div class="setting-group">
+            <label for="custom-model" class="setting-label">Model Name</label>
+            <input type="text" id="custom-model" class="text-input" placeholder="hexgrad/Kokoro-82M" value="hexgrad/Kokoro-82M" />
+          </div>
+          <div class="setting-group">
+            <div class="setting-header">
+              <label for="custom-key" class="setting-label">API Key / Token (Optional for Local)</label>
+              <button type="button" class="toggle-password-btn" data-target="custom-key">Show</button>
+            </div>
+            <input type="password" id="custom-key" class="text-input" placeholder="DeepInfra token or leave blank" autocomplete="off" />
+          </div>
+          <p class="provider-help">Compatible with DeepInfra Kokoro-82M or local Kokoro endpoints (e.g. <code>http://localhost:8880/v1/audio/speech</code>).</p>
         </div>
-        <div class="setting-group">
-          <label for="custom-model" class="setting-label">Model Name</label>
-          <input type="text" id="custom-model" class="text-input" placeholder="hexgrad/Kokoro-82M" value="hexgrad/Kokoro-82M" />
-        </div>
-        <div class="setting-group">
-          <label for="custom-key" class="setting-label">API Key / Token (Optional for Local)</label>
-          <input type="password" id="custom-key" class="text-input" placeholder="DeepInfra token or leave blank" autocomplete="off" />
-        </div>
-        <p class="provider-help">Compatible with DeepInfra Kokoro-82M or local Kokoro servers (e.g. <code>http://localhost:8880/v1/audio/speech</code>).</p>
       </div>
 
       <div class="settings-actions">
