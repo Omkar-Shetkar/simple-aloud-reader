@@ -57,6 +57,13 @@ addMessageListener((message, sender, sendResponse) => {
       sendResponse({ session: audioManager.getState() });
       break;
 
+    case MESSAGE_TYPES.UPDATE_SETTINGS:
+      if (message.payload) {
+        audioManager.setSettings(message.payload);
+      }
+      sendResponse({ success: true });
+      break;
+
     default:
       break;
   }

@@ -18,6 +18,7 @@ export class AudioManager {
     this.status = PLAYBACK_STATUS.IDLE;
     this.speedRate = 1.0;
     this.voiceId = 'en-US-female';
+    this.settings = {};
     this.isInitialized = false;
     this.playbackToken = 0; // Incremented on stop/seek to invalidate pending async speak callbacks
     this.onSentenceChange = options.onSentenceChange || null;
@@ -67,6 +68,7 @@ export class AudioManager {
     this.activeArticle = article;
     this.currentParagraphIndex = 0;
     this.currentSentenceIndex = 0;
+    this.settings = { ...this.settings, ...settings };
     this.speedRate = settings.speedRate || this.speedRate;
     this.voiceId = settings.voiceId || this.voiceId;
     this.ttsFactory.setRate(this.speedRate);
@@ -124,6 +126,7 @@ export class AudioManager {
       await this.ttsFactory.speak(currentItem.text, {
         voiceId: this.voiceId,
         rate: this.speedRate,
+        settings: this.settings,
         onEnd: () => {
           if (token !== this.playbackToken) return;
           if (this.status === PLAYBACK_STATUS.PLAYING) {
@@ -212,6 +215,18 @@ export class AudioManager {
     if (this.status === PLAYBACK_STATUS.PLAYING) {
       this.ttsFactory.stop();
       this.playCurrentSentence();
+    }
+  }
+
+  setSettings(newSettings = {}) {
+    this.settings = { ...this.settings, ...newSettings };
+    if (typeof newSettings.speedRate === 'number') {
+      this.speedRate = newSettings.speedRate;
+      this.ttsFactory.setRate(newSettings.speedRate);
+    }
+    if (typeof newSettings.voiceId === 'string') {
+      this.voiceId = newSettings.voiceId;
+      this.ttsFactory.setVoice(newSettings.voiceId);
     }
   }
 

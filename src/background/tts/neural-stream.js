@@ -228,18 +228,13 @@ export class NeuralStreamEngine {
   }
 
   /**
-   * Speaks a chunk of text.
-   * @param {string} text
+   * Plays an audio blob directly through the HTML5 Audio element.
+   * @param {Blob} blob
    * @param {object} options
    */
-  async speak(text, options = {}) {
+  async playBlob(blob, options = {}) {
     this.stop();
 
-    const voiceName = options.serviceVoiceName || this.currentVoiceName;
-    const rate = options.rate || this.currentRate;
-    const dialect = options.dialect || options.profile?.dialect || 'en-US';
-
-    const blob = await this.synthesizeToBlob(text, voiceName, rate, dialect);
     if (!blob || blob.size === 0) {
       throw new Error('Empty audio stream received');
     }
@@ -254,11 +249,11 @@ export class NeuralStreamEngine {
     }
 
     if (!this.audioElement) {
-      // In non-DOM testing environment, complete immediately
       if (options.onEnd) options.onEnd();
       return;
     }
 
+    const rate = options.rate || this.currentRate;
     this.audioElement.src = this.currentBlobUrl;
     this.audioElement.playbackRate = rate;
 
@@ -284,6 +279,20 @@ export class NeuralStreamEngine {
         })
         .catch(reject);
     });
+  }
+
+  /**
+   * Speaks a chunk of text.
+   * @param {string} text
+   * @param {object} options
+   */
+  async speak(text, options = {}) {
+    const voiceName = options.serviceVoiceName || this.currentVoiceName;
+    const rate = options.rate || this.currentRate;
+    const dialect = options.dialect || options.profile?.dialect || 'en-US';
+
+    const blob = await this.synthesizeToBlob(text, voiceName, rate, dialect);
+    return this.playBlob(blob, options);
   }
 
   pause() {

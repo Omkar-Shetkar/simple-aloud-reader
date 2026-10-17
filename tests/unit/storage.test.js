@@ -29,4 +29,33 @@ describe('Storage & Preference Persistence (US2)', () => {
     expect(reloaded.speedRate).toBe(1.5);
     expect(reloaded.autoScroll).toBe(true);
   });
+
+  it('persists AI voice provider settings and API configurations', async () => {
+    const updated = await updateStoredSettings({
+      provider: 'azure',
+      azureKey: 'test-azure-key-12345',
+      azureRegion: 'westus',
+      openaiKey: 'sk-test-key-67890',
+      openaiVoice: 'shimmer',
+      customUrl: 'http://localhost:8880/v1/audio/speech',
+      customModel: 'hexgrad/Kokoro-82M'
+    });
+
+    expect(updated.provider).toBe('azure');
+    expect(updated.azureKey).toBe('test-azure-key-12345');
+    expect(updated.azureRegion).toBe('westus');
+    expect(updated.openaiKey).toBe('sk-test-key-67890');
+    expect(updated.openaiVoice).toBe('shimmer');
+    expect(updated.customUrl).toBe('http://localhost:8880/v1/audio/speech');
+
+    const reloaded = await getStoredSettings();
+    expect(reloaded.provider).toBe('azure');
+    expect(reloaded.azureKey).toBe('test-azure-key-12345');
+    expect(reloaded.azureRegion).toBe('westus');
+    expect(reloaded.openaiKey).toBe('sk-test-key-67890');
+    expect(reloaded.openaiVoice).toBe('shimmer');
+    expect(reloaded.customUrl).toBe('http://localhost:8880/v1/audio/speech');
+    // Ensure default settings are still intact
+    expect(reloaded.speedRate).toBe(1.0);
+  });
 });

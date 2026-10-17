@@ -53,7 +53,17 @@
         speedRate: 1,
         autoScroll: true,
         highlightColor: "#fef08a",
-        sessionBuffering: true
+        sessionBuffering: true,
+        provider: "system",
+        azureKey: "",
+        azureRegion: "eastus",
+        openaiKey: "",
+        openaiVoice: "nova",
+        elevenlabsKey: "",
+        elevenlabsVoiceId: "21m00Tcm4TlvDq8ikWAM",
+        customUrl: "",
+        customModel: "hexgrad/Kokoro-82M",
+        customKey: ""
       };
       SPEED_PRESETS = [0.75, 1, 1.25, 1.5, 1.75, 2];
       MESSAGE_TYPES = {
@@ -2927,16 +2937,12 @@ Path:ssml\r
       });
     }
     /**
-     * Speaks a chunk of text.
-     * @param {string} text
+     * Plays an audio blob directly through the HTML5 Audio element.
+     * @param {Blob} blob
      * @param {object} options
      */
-    async speak(text, options = {}) {
+    async playBlob(blob, options = {}) {
       this.stop();
-      const voiceName = options.serviceVoiceName || this.currentVoiceName;
-      const rate = options.rate || this.currentRate;
-      const dialect = options.dialect || options.profile?.dialect || "en-US";
-      const blob = await this.synthesizeToBlob(text, voiceName, rate, dialect);
       if (!blob || blob.size === 0) {
         throw new Error("Empty audio stream received");
       }
@@ -2951,6 +2957,7 @@ Path:ssml\r
         if (options.onEnd) options.onEnd();
         return;
       }
+      const rate = options.rate || this.currentRate;
       this.audioElement.src = this.currentBlobUrl;
       this.audioElement.playbackRate = rate;
       return new Promise((resolve, reject) => {
@@ -2971,6 +2978,18 @@ Path:ssml\r
           this.isPaused = false;
         }).catch(reject);
       });
+    }
+    /**
+     * Speaks a chunk of text.
+     * @param {string} text
+     * @param {object} options
+     */
+    async speak(text, options = {}) {
+      const voiceName = options.serviceVoiceName || this.currentVoiceName;
+      const rate = options.rate || this.currentRate;
+      const dialect = options.dialect || options.profile?.dialect || "en-US";
+      const blob = await this.synthesizeToBlob(text, voiceName, rate, dialect);
+      return this.playBlob(blob, options);
     }
     pause() {
       if (this.audioElement && this.isPlaying) {
@@ -3140,6 +3159,114 @@ Path:ssml\r
     }
   };
 
+  // src/background/tts/cloud-providers.js
+  async function synthesizeAzureSpeech(text, settings = {}, profile = {}, rate = 1) {
+    const apiKey = settings.azureKey?.trim();
+    const region = settings.azureRegion?.trim() || "eastus";
+    if (!apiKey) throw new Error("Azure Speech API Key is missing. Please configure it in Settings.");
+    const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+    const voiceName = profile.serviceVoiceName || "en-US-JennyNeural";
+    const ssml = buildSsml(text, voiceName, rate);
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": apiKey,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+        "User-Agent": "SimpleAloudReader/1.0"
+      },
+      body: ssml
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Azure Speech API error (${res.status}): ${errText || res.statusText}`);
+    }
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error("Azure Speech returned an empty audio stream");
+    return blob;
+  }
+  async function synthesizeOpenAiSpeech(text, settings = {}, rate = 1) {
+    const apiKey = settings.openaiKey?.trim();
+    if (!apiKey) throw new Error("OpenAI API Key is missing. Please configure it in Settings.");
+    const voice = settings.openaiVoice || "nova";
+    const clampedRate = Math.min(2, Math.max(0.75, rate));
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "tts-1",
+        input: text,
+        voice,
+        speed: clampedRate
+      })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(`OpenAI TTS error (${res.status}): ${errData.error?.message || res.statusText}`);
+    }
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error("OpenAI returned an empty audio stream");
+    return blob;
+  }
+  async function synthesizeElevenLabsSpeech(text, settings = {}) {
+    const apiKey = settings.elevenlabsKey?.trim();
+    if (!apiKey) throw new Error("ElevenLabs API Key is missing. Please configure it in Settings.");
+    const voiceId = settings.elevenlabsVoiceId?.trim() || "21m00Tcm4TlvDq8ikWAM";
+    const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75
+        }
+      })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(`ElevenLabs error (${res.status}): ${errData.detail?.message || res.statusText}`);
+    }
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error("ElevenLabs returned an empty audio stream");
+    return blob;
+  }
+  async function synthesizeCustomSpeech(text, settings = {}) {
+    let baseUrl = (settings.customUrl?.trim() || "https://api.deepinfra.com/v1/openai").replace(/\/+$/, "");
+    const endpoint = baseUrl.endsWith("/audio/speech") ? baseUrl : `${baseUrl}/audio/speech`;
+    const apiKey = settings.customKey?.trim();
+    const model = settings.customModel?.trim() || "hexgrad/Kokoro-82M";
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        input: text,
+        voice: "af_heart"
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Custom AI TTS error (${res.status}): ${errText || res.statusText}`);
+    }
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error("Custom AI TTS returned an empty audio stream");
+    return blob;
+  }
+
   // src/background/tts/tts-factory.js
   var TtsFactory = class {
     constructor() {
@@ -3172,7 +3299,7 @@ Path:ssml\r
       }));
     }
     /**
-     * Speaks the text chunk using neural streaming, falling back to local synthesis on error.
+     * Speaks the text chunk using configured AI provider or neural streaming, falling back to local synthesis on error.
      * @param {string} text
      * @param {object} options
      */
@@ -3180,7 +3307,48 @@ Path:ssml\r
       const voiceId = options.voiceId || this.currentVoiceId;
       const profile = getVoiceById(voiceId);
       const rate = options.rate || this.currentRate;
+      const settings = options.settings || {};
+      const provider = settings.provider || "system";
       const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+      if (!isOffline) {
+        if (provider === "azure" && settings.azureKey) {
+          try {
+            const blob = await synthesizeAzureSpeech(text, settings, profile, rate);
+            this.activeEngine = this.neuralEngine;
+            await this.neuralEngine.playBlob(blob, options);
+            return;
+          } catch (err) {
+            console.warn("[SimpleAloud] Azure Speech synthesis failed, falling back:", err);
+          }
+        } else if (provider === "openai" && settings.openaiKey) {
+          try {
+            const blob = await synthesizeOpenAiSpeech(text, settings, rate);
+            this.activeEngine = this.neuralEngine;
+            await this.neuralEngine.playBlob(blob, options);
+            return;
+          } catch (err) {
+            console.warn("[SimpleAloud] OpenAI TTS synthesis failed, falling back:", err);
+          }
+        } else if (provider === "elevenlabs" && settings.elevenlabsKey) {
+          try {
+            const blob = await synthesizeElevenLabsSpeech(text, settings);
+            this.activeEngine = this.neuralEngine;
+            await this.neuralEngine.playBlob(blob, options);
+            return;
+          } catch (err) {
+            console.warn("[SimpleAloud] ElevenLabs synthesis failed, falling back:", err);
+          }
+        } else if (provider === "custom" && (settings.customUrl || settings.customKey)) {
+          try {
+            const blob = await synthesizeCustomSpeech(text, settings);
+            this.activeEngine = this.neuralEngine;
+            await this.neuralEngine.playBlob(blob, options);
+            return;
+          } catch (err) {
+            console.warn("[SimpleAloud] Custom AI TTS synthesis failed, falling back:", err);
+          }
+        }
+      }
       if (!isOffline && !this.isOfflineMode) {
         try {
           this.activeEngine = this.neuralEngine;
@@ -3241,6 +3409,7 @@ Path:ssml\r
       this.status = PLAYBACK_STATUS.IDLE;
       this.speedRate = 1;
       this.voiceId = "en-US-female";
+      this.settings = {};
       this.isInitialized = false;
       this.playbackToken = 0;
       this.onSentenceChange = options.onSentenceChange || null;
@@ -3285,6 +3454,7 @@ Path:ssml\r
       this.activeArticle = article;
       this.currentParagraphIndex = 0;
       this.currentSentenceIndex = 0;
+      this.settings = { ...this.settings, ...settings };
       this.speedRate = settings.speedRate || this.speedRate;
       this.voiceId = settings.voiceId || this.voiceId;
       this.ttsFactory.setRate(this.speedRate);
@@ -3334,6 +3504,7 @@ Path:ssml\r
         await this.ttsFactory.speak(currentItem.text, {
           voiceId: this.voiceId,
           rate: this.speedRate,
+          settings: this.settings,
           onEnd: () => {
             if (token !== this.playbackToken) return;
             if (this.status === PLAYBACK_STATUS.PLAYING) {
@@ -3418,6 +3589,17 @@ Path:ssml\r
         this.playCurrentSentence();
       }
     }
+    setSettings(newSettings = {}) {
+      this.settings = { ...this.settings, ...newSettings };
+      if (typeof newSettings.speedRate === "number") {
+        this.speedRate = newSettings.speedRate;
+        this.ttsFactory.setRate(newSettings.speedRate);
+      }
+      if (typeof newSettings.voiceId === "string") {
+        this.voiceId = newSettings.voiceId;
+        this.ttsFactory.setVoice(newSettings.voiceId);
+      }
+    }
     getState() {
       return {
         status: this.status,
@@ -3480,6 +3662,12 @@ Path:ssml\r
         break;
       case MESSAGE_TYPES.GET_STATE:
         sendResponse({ session: audioManager.getState() });
+        break;
+      case MESSAGE_TYPES.UPDATE_SETTINGS:
+        if (message.payload) {
+          audioManager.setSettings(message.payload);
+        }
+        sendResponse({ success: true });
         break;
       default:
         break;

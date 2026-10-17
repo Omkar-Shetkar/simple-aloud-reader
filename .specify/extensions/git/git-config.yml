@@ -50,7 +50,7 @@ auto_commit:
     message: "[Spec Kit] Add tasks"
   after_implement:
     enabled: true
-    message: "[Spec Kit] Add neural speech streaming and natural voice ranking"
+    message: "[Spec Kit] Add AI Voice Settings panel with multi-provider support"
   after_checklist:
     enabled: false
     message: "[Spec Kit] Add checklist"

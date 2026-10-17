@@ -6,12 +6,30 @@ export const STORAGE_KEYS = {
   SETTINGS: 'simple_aloud_settings'
 };
 
+export const AI_PROVIDERS = {
+  SYSTEM: 'system',
+  AZURE: 'azure',
+  OPENAI: 'openai',
+  ELEVENLABS: 'elevenlabs',
+  CUSTOM: 'custom'
+};
+
 export const DEFAULT_SETTINGS = {
   voiceId: 'en-US-female',
   speedRate: 1.0,
   autoScroll: true,
   highlightColor: '#fef08a',
-  sessionBuffering: true
+  sessionBuffering: true,
+  provider: 'system',
+  azureKey: '',
+  azureRegion: 'eastus',
+  openaiKey: '',
+  openaiVoice: 'nova',
+  elevenlabsKey: '',
+  elevenlabsVoiceId: '21m00Tcm4TlvDq8ikWAM',
+  customUrl: '',
+  customModel: 'hexgrad/Kokoro-82M',
+  customKey: ''
 };
 
 export const SPEED_PRESETS = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];

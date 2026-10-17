@@ -25,7 +25,13 @@ addMessageListener((message, sender, sendResponse) => {
 
     case MESSAGE_TYPES.UPDATE_SETTINGS:
       updateStoredSettings(message.payload)
-        .then((settings) => sendResponse({ success: true, settings }))
+        .then((settings) => {
+          audioManager.setSettings(message.payload);
+          if (tabId) {
+            sendMessageToTab(tabId, MESSAGE_TYPES.UPDATE_SETTINGS, message.payload).catch(() => {});
+          }
+          sendResponse({ success: true, settings });
+        })
         .catch((error) => sendResponse({ success: false, error: error.message }));
       return true;
 

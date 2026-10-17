@@ -6,6 +6,12 @@
 import { CURATED_VOICES, getVoiceById } from './voices.js';
 import { NeuralStreamEngine } from './neural-stream.js';
 import { LocalSpeechEngine } from './local-speech.js';
+import {
+  synthesizeAzureSpeech,
+  synthesizeOpenAiSpeech,
+  synthesizeElevenLabsSpeech,
+  synthesizeCustomSpeech
+} from './cloud-providers.js';
 
 export class TtsFactory {
   constructor() {
@@ -39,7 +45,7 @@ export class TtsFactory {
   }
 
   /**
-   * Speaks the text chunk using neural streaming, falling back to local synthesis on error.
+   * Speaks the text chunk using configured AI provider or neural streaming, falling back to local synthesis on error.
    * @param {string} text
    * @param {object} options
    */
@@ -47,9 +53,53 @@ export class TtsFactory {
     const voiceId = options.voiceId || this.currentVoiceId;
     const profile = getVoiceById(voiceId);
     const rate = options.rate || this.currentRate;
+    const settings = options.settings || {};
+    const provider = settings.provider || 'system';
 
     const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
+    // 1. Check configured cloud AI providers (Azure, OpenAI, ElevenLabs, Custom/Kokoro)
+    if (!isOffline) {
+      if (provider === 'azure' && settings.azureKey) {
+        try {
+          const blob = await synthesizeAzureSpeech(text, settings, profile, rate);
+          this.activeEngine = this.neuralEngine;
+          await this.neuralEngine.playBlob(blob, options);
+          return;
+        } catch (err) {
+          console.warn('[SimpleAloud] Azure Speech synthesis failed, falling back:', err);
+        }
+      } else if (provider === 'openai' && settings.openaiKey) {
+        try {
+          const blob = await synthesizeOpenAiSpeech(text, settings, rate);
+          this.activeEngine = this.neuralEngine;
+          await this.neuralEngine.playBlob(blob, options);
+          return;
+        } catch (err) {
+          console.warn('[SimpleAloud] OpenAI TTS synthesis failed, falling back:', err);
+        }
+      } else if (provider === 'elevenlabs' && settings.elevenlabsKey) {
+        try {
+          const blob = await synthesizeElevenLabsSpeech(text, settings);
+          this.activeEngine = this.neuralEngine;
+          await this.neuralEngine.playBlob(blob, options);
+          return;
+        } catch (err) {
+          console.warn('[SimpleAloud] ElevenLabs synthesis failed, falling back:', err);
+        }
+      } else if (provider === 'custom' && (settings.customUrl || settings.customKey)) {
+        try {
+          const blob = await synthesizeCustomSpeech(text, settings);
+          this.activeEngine = this.neuralEngine;
+          await this.neuralEngine.playBlob(blob, options);
+          return;
+        } catch (err) {
+          console.warn('[SimpleAloud] Custom AI TTS synthesis failed, falling back:', err);
+        }
+      }
+    }
+
+    // 2. Default: High-Definition Neural Audio Stream (Google Neural / Edge)
     if (!isOffline && !this.isOfflineMode) {
       try {
         this.activeEngine = this.neuralEngine;
@@ -68,7 +118,7 @@ export class TtsFactory {
       }
     }
 
-    // Local device fallback
+    // 3. Local device fallback (Apple natural voices Samantha/Alex/Daniel/Veena, Windows, Android)
     this.activeEngine = this.localEngine;
     await this.localEngine.speak(text, {
       profile,
